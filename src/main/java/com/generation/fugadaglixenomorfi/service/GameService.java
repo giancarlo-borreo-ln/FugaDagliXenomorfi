@@ -1,32 +1,50 @@
 package com.generation.fugadaglixenomorfi.service;
 
+import com.generation.fugadaglixenomorfi.dto.GameStatus;
 import com.generation.fugadaglixenomorfi.model.*;
 import com.generation.fugadaglixenomorfi.model.repository.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.util.Optional;
 
 @Service
 public class GameService {
 
-    @Autowired
-    private NaveSpazialeRepository naveSpazialeRepository;
+    private final NaveSpazialeRepository naveSpazialeRepository;
+    private final StanzaRepository stanzaRepository;
+    private final UmanoRepository umanoRepository;
+    private final XenomorfoRepository xenomorfoRepository;
+    private final ModuloRiparazioneRepository moduloRiparazioneRepository;
+    private final EquipaggiamentoRepository equipaggiamentoRepository;
+
+    private final UmanoService umanoService;
+    private final ModuloRiparazioneService moduloRiparazioneService;
+    private final XenomorfoService xenomorfoService;
 
     @Autowired
-    private StanzaRepository stanzaRepository;
-
-    @Autowired
-    private UmanoRepository umanoRepository;
-
-    @Autowired
-    private XenomorfoRepository xenomorfoRepository;
-
-    @Autowired
-    private ModuloRiparazioneRepository moduloRiparazioneRepository;
-
-    @Autowired
-    private EquipaggiamentoRepository equipaggiamentoRepository;
+    public GameService(
+            NaveSpazialeRepository naveSpazialeRepository,
+            StanzaRepository stanzaRepository,
+            UmanoRepository umanoRepository,
+            XenomorfoRepository xenomorfoRepository,
+            ModuloRiparazioneRepository moduloRiparazioneRepository,
+            EquipaggiamentoRepository equipaggiamentoRepository,
+            UmanoService umanoService,
+            ModuloRiparazioneService moduloRiparazioneService,
+            XenomorfoService xenomorfoService
+    ) {
+        this.naveSpazialeRepository = naveSpazialeRepository;
+        this.stanzaRepository = stanzaRepository;
+        this.umanoRepository = umanoRepository;
+        this.xenomorfoRepository = xenomorfoRepository;
+        this.moduloRiparazioneRepository = moduloRiparazioneRepository;
+        this.equipaggiamentoRepository = equipaggiamentoRepository;
+        this.umanoService = umanoService;
+        this.moduloRiparazioneService = moduloRiparazioneService;
+        this.xenomorfoService = xenomorfoService;
+    }
 
     public void inizializzaPartita(String nomeNave) {
         NaveSpaziale nave = new NaveSpaziale();
@@ -67,13 +85,12 @@ public class GameService {
     }
 
     private void generaEventoCasuale(NaveSpaziale nave) {
-        List<Stanza> stanze = stanzaRepository.findAll();
+        List<Stanza> stanze = stanzaRepository.findByNaveId(nave.getId());
         if (stanze.isEmpty()) {
             return;
         }
 
         int eventoCasuale = (int) (Math.random() * 4);
-
         Stanza stanzaCasuale = stanze.get((int) (Math.random() * stanze.size()));
 
         switch (eventoCasuale) {
@@ -84,9 +101,11 @@ public class GameService {
             case 1 -> {
                 TipoEquipaggiamento[] risorse = TipoEquipaggiamento.values();
                 TipoEquipaggiamento risorsaCasuale = risorse[(int) (Math.random() * risorse.length)];
-                Equipaggiamento nuovoEquipaggiamento = new Equipaggiamento(null, risorsaCasuale, 10, stanzaCasuale);
+                String nomeEquipaggiamento = "Equipaggiamento: " + risorsaCasuale.name();
+                Equipaggiamento nuovoEquipaggiamento = new Equipaggiamento(null, nomeEquipaggiamento, risorsaCasuale, 10, stanzaCasuale);
                 equipaggiamentoRepository.save(nuovoEquipaggiamento);
             }
+
             case 2 -> {
                 List<ModuloRiparazione> moduli = moduloRiparazioneRepository.findByStanzaId(stanzaCasuale.getId());
                 if (!moduli.isEmpty()) {
@@ -104,5 +123,28 @@ public class GameService {
                 }
             }
         }
+    }
+
+
+    public GameStatus getGameStatus() {
+        int turnoCorrente = naveSpazialeRepository.findAll().stream()
+                .mapToInt(NaveSpaziale::getTurnoCorrente)
+                .max()
+                .orElse(0);
+
+        int umaniVivi = umanoService.getNumeroUmaniVivi();
+        int moduliRiparati = (int) moduloRiparazioneService.getNumeroModuliRiparati(); // Cast sicuro o usa Math.toIntExact
+        int xenomorfiPresenti = xenomorfoService.getNumeroXenomorfiPresenti();
+
+        return new GameStatus(turnoCorrente, umaniVivi, moduliRiparati, xenomorfiPresenti);
+    }
+
+    public String getGameSummary() {
+        GameStatus status = getGameStatus();
+        return String.format(
+                "Turno Corrente: %d\nUmani Vivi: %d\nModuli Riparati: %d\nXenomorfi Presenti: %d",
+                status.getTurnoCorrente(), status.getUmaniVivi(),
+                status.getModuliRiparati(), status.getXenomorfiPresenti()
+        );
     }
 }

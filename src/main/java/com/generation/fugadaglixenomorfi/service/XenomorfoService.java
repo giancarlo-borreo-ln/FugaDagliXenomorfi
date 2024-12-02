@@ -85,4 +85,8 @@ public class XenomorfoService {
             throw new IllegalArgumentException("Xenomorfo non trovato con ID: " + id);
         }
     }
+    public int getNumeroXenomorfiPresenti() {
+        return (int) xenomorfoRepository.count();
+    }
+
 }

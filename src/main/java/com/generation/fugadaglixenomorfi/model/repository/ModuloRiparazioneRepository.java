@@ -14,4 +14,6 @@ public interface ModuloRiparazioneRepository extends JpaRepository<ModuloRiparaz
     List<ModuloRiparazione> findByProgressiLessThan(int progressi);
 
     int countByCompletatoFalse();
+
+    long countByCompletatoTrue();
 }

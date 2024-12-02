@@ -73,4 +73,7 @@ public class UmanoService {
             throw new IllegalArgumentException("Umano non trovato con ID: " + id);
         }
     }
+    public int getNumeroUmaniVivi() {
+        return (int) umanoRepository.count();
+    }
 }

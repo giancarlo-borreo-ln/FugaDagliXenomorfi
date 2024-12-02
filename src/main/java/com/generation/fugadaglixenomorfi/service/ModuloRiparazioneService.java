@@ -84,4 +84,8 @@ public class ModuloRiparazioneService {
             throw new IllegalArgumentException("Modulo non trovato con ID: " + id);
         }
     }
+    public int getNumeroModuliRiparati() {
+        return Math.toIntExact(moduloRiparazioneRepository.countByCompletatoTrue());
+    }
+
 }

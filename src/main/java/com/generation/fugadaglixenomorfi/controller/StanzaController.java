@@ -45,16 +45,10 @@ public class StanzaController {
         return ResponseEntity.ok(stanzeBarricate);
     }
 
-    @GetMapping("/xenomorfi")
-    public ResponseEntity<List<Stanza>> getStanzeConXenomorfi() {
-        List<Stanza> stanzeConXenomorfi = stanzaService.getStanzeConXenomorfi();
-        return ResponseEntity.ok(stanzeConXenomorfi);
-    }
-
-    @GetMapping("/umani")
-    public ResponseEntity<List<Stanza>> getStanzeConUmani() {
-        List<Stanza> stanzeConUmani = stanzaService.getStanzeConUmani();
-        return ResponseEntity.ok(stanzeConUmani);
+    @GetMapping("/nave/{naveId}")
+    public ResponseEntity<List<Stanza>> getStanzeByNaveId(@PathVariable Long naveId) {
+        List<Stanza> stanze = stanzaService.getStanzeByNaveId(naveId);
+        return ResponseEntity.ok(stanze);
     }
 
     @PostMapping
