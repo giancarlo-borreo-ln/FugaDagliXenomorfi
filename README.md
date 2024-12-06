@@ -94,7 +94,7 @@
 
 ## Tecnologie Utilizzate
 - **Java Spring Boot**: Per lo sviluppo dei servizi REST.
-- **PostgreSQL**: Database per la gestione dei dati di gioco.
+- **MYSql**: Database per la gestione dei dati di gioco.
 - **JSON**: Formato per la comunicazione tra client e server.
 
 ---
