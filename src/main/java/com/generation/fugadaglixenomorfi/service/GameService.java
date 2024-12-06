@@ -8,133 +8,64 @@ import org.springframework.stereotype.Service;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.Random;
 
 @Service
 public class GameService {
 
-    private final NaveSpazialeRepository naveSpazialeRepository;
+    private final NaveSpazialeRepository naveRepository;
     private final StanzaRepository stanzaRepository;
     private final UmanoRepository umanoRepository;
     private final XenomorfoRepository xenomorfoRepository;
-    private final ModuloRiparazioneRepository moduloRiparazioneRepository;
+    private final ModuloRiparazioneRepository moduloRepository;
     private final EquipaggiamentoRepository equipaggiamentoRepository;
 
-    private final UmanoService umanoService;
-    private final ModuloRiparazioneService moduloRiparazioneService;
-    private final XenomorfoService xenomorfoService;
-
     @Autowired
-    public GameService(
-            NaveSpazialeRepository naveSpazialeRepository,
-            StanzaRepository stanzaRepository,
-            UmanoRepository umanoRepository,
-            XenomorfoRepository xenomorfoRepository,
-            ModuloRiparazioneRepository moduloRiparazioneRepository,
-            EquipaggiamentoRepository equipaggiamentoRepository,
-            UmanoService umanoService,
-            ModuloRiparazioneService moduloRiparazioneService,
-            XenomorfoService xenomorfoService
-    ) {
-        this.naveSpazialeRepository = naveSpazialeRepository;
+    public GameService(NaveSpazialeRepository naveRepository, StanzaRepository stanzaRepository, UmanoRepository umanoRepository,
+                       XenomorfoRepository xenomorfoRepository, ModuloRiparazioneRepository moduloRepository,
+                       EquipaggiamentoRepository equipaggiamentoRepository) {
+        this.naveRepository = naveRepository;
         this.stanzaRepository = stanzaRepository;
         this.umanoRepository = umanoRepository;
         this.xenomorfoRepository = xenomorfoRepository;
-        this.moduloRiparazioneRepository = moduloRiparazioneRepository;
+        this.moduloRepository = moduloRepository;
         this.equipaggiamentoRepository = equipaggiamentoRepository;
-        this.umanoService = umanoService;
-        this.moduloRiparazioneService = moduloRiparazioneService;
-        this.xenomorfoService = xenomorfoService;
     }
 
-    public void inizializzaPartita(String nomeNave) {
+    public void initializeGame(String shipName) {
         NaveSpaziale nave = new NaveSpaziale();
-        nave.setNome(nomeNave);
+        nave.setNome(shipName);
         nave.setTurnoCorrente(0);
-        naveSpazialeRepository.save(nave);
+        naveRepository.save(nave);
 
-        Stanza comando = new Stanza(null, "Comando", TipoStanza.COMANDO, false, 0, 0, null, null, null, null, nave);
-        Stanza deposito = new Stanza(null, "Deposito", TipoStanza.DEPOSITO, false, 0, 0, null, null, null, null, nave);
-        stanzaRepository.save(comando);
-        stanzaRepository.save(deposito);
+        Stanza mainRoom = new Stanza(null, "Comando", TipoStanza.COMANDO, false, 0, 0, null, null, null, null, nave);
+        Stanza depot = new Stanza(null, "Deposito", TipoStanza.DEPOSITO, false, 0, 0, null, null, null, null, nave);
+        stanzaRepository.saveAll(List.of(mainRoom, depot));
 
-        Umano umano = new Umano(null, "Riparatore", 20, 100, comando);
-        umanoRepository.save(umano);
+        Umano repairman = new Umano(null, "Riparatore", 20, 100, mainRoom);
+        umanoRepository.save(repairman);
 
-        Xenomorfo xenomorfo = new Xenomorfo(null, 400, 50, false, deposito);
-        xenomorfoRepository.save(xenomorfo);
+        Xenomorfo alien = new Xenomorfo(null, 300, 50, false, depot);
+        xenomorfoRepository.save(alien);
 
-        ModuloRiparazione modulo = new ModuloRiparazione(null, "Motore Principale", 100, 0, false, comando);
-        moduloRiparazioneRepository.save(modulo);
+        ModuloRiparazione engine = new ModuloRiparazione(null, "Motore Principale", 100, 0, false, mainRoom);
+        moduloRepository.save(engine);
     }
 
-    public void avanzareTurno() {
-        List<NaveSpaziale> navi = naveSpazialeRepository.findAll();
+    public void advanceTurn() {
+        List<NaveSpaziale> navi = naveRepository.findAll();
         for (NaveSpaziale nave : navi) {
             nave.setTurnoCorrente(nave.getTurnoCorrente() + 1);
-            naveSpazialeRepository.save(nave);
-            generaEventoCasuale(nave);
+            naveRepository.save(nave);
+            triggerRandomEvent(nave);
         }
     }
-
-    public boolean checkCondizioniVittoria() {
-        return moduloRiparazioneRepository.countByCompletatoFalse() == 0;
-    }
-
-    public boolean checkCondizioniSconfitta() {
-        return umanoRepository.count() == 0;
-    }
-
-    private void generaEventoCasuale(NaveSpaziale nave) {
-        List<Stanza> stanze = stanzaRepository.findByNaveId(nave.getId());
-        if (stanze.isEmpty()) {
-            return;
-        }
-
-        int eventoCasuale = (int) (Math.random() * 4);
-        Stanza stanzaCasuale = stanze.get((int) (Math.random() * stanze.size()));
-
-        switch (eventoCasuale) {
-            case 0 -> {
-                Xenomorfo nuovoXenomorfo = new Xenomorfo(null, 300, 50, false, stanzaCasuale);
-                xenomorfoRepository.save(nuovoXenomorfo);
-            }
-            case 1 -> {
-                TipoEquipaggiamento[] risorse = TipoEquipaggiamento.values();
-                TipoEquipaggiamento risorsaCasuale = risorse[(int) (Math.random() * risorse.length)];
-                String nomeEquipaggiamento = "Equipaggiamento: " + risorsaCasuale.name();
-                Equipaggiamento nuovoEquipaggiamento = new Equipaggiamento(null, nomeEquipaggiamento, risorsaCasuale, 10, stanzaCasuale);
-                equipaggiamentoRepository.save(nuovoEquipaggiamento);
-            }
-
-            case 2 -> {
-                List<ModuloRiparazione> moduli = moduloRiparazioneRepository.findByStanzaId(stanzaCasuale.getId());
-                if (!moduli.isEmpty()) {
-                    ModuloRiparazione moduloCasuale = moduli.get(0);
-                    moduloCasuale.setProgressi(Math.max(0, moduloCasuale.getProgressi() - 10));
-                    moduloRiparazioneRepository.save(moduloCasuale);
-                }
-            }
-            case 3 -> {
-                List<Umano> umaniNellaStanza = umanoRepository.findByStanzaId(stanzaCasuale.getId());
-                if (!umaniNellaStanza.isEmpty()) {
-                    Umano umanoCasuale = umaniNellaStanza.get((int) (Math.random() * umaniNellaStanza.size()));
-                    umanoCasuale.setHp(Math.max(0, umanoCasuale.getHp() - 20));
-                    umanoRepository.save(umanoCasuale);
-                }
-            }
-        }
-    }
-
 
     public GameStatus getGameStatus() {
-        int turnoCorrente = naveSpazialeRepository.findAll().stream()
-                .mapToInt(NaveSpaziale::getTurnoCorrente)
-                .max()
-                .orElse(0);
-
-        int umaniVivi = umanoService.getNumeroUmaniVivi();
-        int moduliRiparati = (int) moduloRiparazioneService.getNumeroModuliRiparati(); // Cast sicuro o usa Math.toIntExact
-        int xenomorfiPresenti = xenomorfoService.getNumeroXenomorfiPresenti();
+        int turnoCorrente = naveRepository.findAll().stream().mapToInt(NaveSpaziale::getTurnoCorrente).max().orElse(0);
+        int umaniVivi = (int) umanoRepository.findAll().stream().filter(umano -> umano.getHp() > 0).count();
+        int moduliRiparati = (int) moduloRepository.findAll().stream().filter(ModuloRiparazione::isCompletato).count();
+        int xenomorfiPresenti = (int) xenomorfoRepository.count();
 
         return new GameStatus(turnoCorrente, umaniVivi, moduliRiparati, xenomorfiPresenti);
     }
@@ -143,8 +74,93 @@ public class GameService {
         GameStatus status = getGameStatus();
         return String.format(
                 "Turno Corrente: %d\nUmani Vivi: %d\nModuli Riparati: %d\nXenomorfi Presenti: %d",
-                status.getTurnoCorrente(), status.getUmaniVivi(),
-                status.getModuliRiparati(), status.getXenomorfiPresenti()
+                status.getTurnoCorrente(), status.getUmaniVivi(), status.getModuliRiparati(), status.getXenomorfiPresenti()
         );
+    }
+
+    public String explore() {
+        List<Stanza> stanze = stanzaRepository.findAll();
+        if (stanze.isEmpty()) {
+            return "Non ci sono stanze da esplorare.";
+        }
+        Stanza stanza = stanze.get(new Random().nextInt(stanze.size()));
+        return "Esplori la stanza: " + stanza.getNome();
+    }
+
+    public String fight() {
+        List<Xenomorfo> xenomorfi = xenomorfoRepository.findAll();
+        if (xenomorfi.isEmpty()) {
+            return "Non ci sono Xenomorfi da combattere.";
+        }
+        Xenomorfo xenomorfo = xenomorfi.get(new Random().nextInt(xenomorfi.size()));
+        xenomorfo.setHp(xenomorfo.getHp() - 50);
+        if (xenomorfo.getHp() <= 0) {
+            xenomorfoRepository.delete(xenomorfo);
+            return "Hai sconfitto uno Xenomorfo!";
+        }
+        xenomorfoRepository.save(xenomorfo);
+        return "Hai ferito uno Xenomorfo, ma è ancora vivo!";
+    }
+
+    public String repair() {
+        List<ModuloRiparazione> moduli = moduloRepository.findAll();
+        if (moduli.isEmpty()) {
+            return "Non ci sono moduli da riparare.";
+        }
+        ModuloRiparazione modulo = moduli.get(new Random().nextInt(moduli.size()));
+        modulo.setProgressi(modulo.getProgressi() + 20);
+        if (modulo.getProgressi() >= modulo.getPuntiRiparazioneTotali()) {
+            modulo.setCompletato(true);
+        }
+        moduloRepository.save(modulo);
+        return "Hai riparato un modulo: " + modulo.getNome();
+    }
+
+    public String gatherResources() {
+        List<Equipaggiamento> equipaggiamenti = equipaggiamentoRepository.findAll();
+        if (equipaggiamenti.isEmpty()) {
+            return "Non ci sono risorse da raccogliere.";
+        }
+        Equipaggiamento equipaggiamento = equipaggiamenti.get(new Random().nextInt(equipaggiamenti.size()));
+        equipaggiamentoRepository.delete(equipaggiamento);
+        return "Hai raccolto: " + equipaggiamento.getNome();
+    }
+
+    public String reinforce() {
+        List<Umano> umani = umanoRepository.findAll();
+        if (umani.isEmpty()) {
+            return "Non ci sono umani da rinforzare.";
+        }
+        Umano umano = umani.get(new Random().nextInt(umani.size()));
+        umano.setHp(Math.min(100, umano.getHp() + 20));
+        umanoRepository.save(umano);
+        return "Hai rinforzato un umano: " + umano.getNome();
+    }
+
+    public void endGame() {
+        naveRepository.deleteAll();
+        stanzaRepository.deleteAll();
+        umanoRepository.deleteAll();
+        xenomorfoRepository.deleteAll();
+        moduloRepository.deleteAll();
+        equipaggiamentoRepository.deleteAll();
+    }
+
+    private void triggerRandomEvent(NaveSpaziale nave) {
+        List<Stanza> stanze = stanzaRepository.findByNaveId(nave.getId());
+        if (stanze.isEmpty()) return;
+
+        Stanza stanza = stanze.get(new Random().nextInt(stanze.size()));
+        switch (new Random().nextInt(3)) {
+            case 0 -> xenomorfoRepository.save(new Xenomorfo(null, 300, 50, false, stanza));
+            case 1 -> umanoRepository.findByStanzaId(stanza.getId()).forEach(umano -> {
+                umano.setHp(Math.max(0, umano.getHp() - 10));
+                umanoRepository.save(umano);
+            });
+            case 2 -> moduloRepository.findByStanzaId(stanza.getId()).forEach(modulo -> {
+                modulo.setProgressi(Math.max(0, modulo.getProgressi() - 10));
+                moduloRepository.save(modulo);
+            });
+        }
     }
 }

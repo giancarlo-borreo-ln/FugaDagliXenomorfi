@@ -1,13 +1,7 @@
 package com.generation.fugadaglixenomorfi.model;
 
 import jakarta.persistence.*;
-import lombok.Data;
-import lombok.NoArgsConstructor;
-import lombok.AllArgsConstructor;
 
-@Data
-@NoArgsConstructor
-@AllArgsConstructor
 @Entity
 @Table(name = "evento")
 public class Evento {
@@ -29,4 +23,52 @@ public class Evento {
     @ManyToOne
     @JoinColumn(name = "nave_id")
     private NaveSpaziale nave;
+
+    public Evento(){}
+
+    public Evento(String descrizione, int turno, NaveSpaziale nave){
+        this.descrizione = descrizione;
+        this.turno = turno;
+        this.nave = nave;
+    }
+
+    public Long getId() {
+        return id;
+    }
+
+    public void setId(Long id) {
+        this.id = id;
+    }
+
+    public String getDescrizione() {
+        return descrizione;
+    }
+
+    public void setDescrizione(String descrizione) {
+        this.descrizione = descrizione;
+    }
+
+    public int getTurno() {
+        return turno;
+    }
+
+    public void setTurno(int turno) {
+        this.turno = turno;
+    }
+
+    public Stanza getStanza() {
+        return stanza;
+    }
+
+    public void setStanza(Stanza stanza) {
+        this.stanza = stanza;
+    }
+
+    public NaveSpaziale getNave() {
+        return nave;
+    }
+
+    public void setNave(NaveSpaziale nave) {
+        this.nave = nave;
+    }
 }
